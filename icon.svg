@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 背景：青の角丸正方形 -->
+  <rect width="512" height="512" rx="96" fill="#2b6cb0"/>
+  <!-- 後輪 -->
+  <circle cx="148" cy="336" r="96" fill="none" stroke="white" stroke-width="28"/>
+  <!-- 前輪 -->
+  <circle cx="364" cy="336" r="96" fill="none" stroke="white" stroke-width="28"/>
+  <!-- リアフレーム（後輪ハブ→BB→シートチューブ） -->
+  <line x1="148" y1="336" x2="256" y2="220" stroke="white" stroke-width="26" stroke-linecap="round"/>
+  <!-- フロントフォーク（前輪ハブ→ヘッドチューブ） -->
+  <line x1="364" y1="336" x2="296" y2="200" stroke="white" stroke-width="26" stroke-linecap="round"/>
+  <!-- トップチューブ -->
+  <line x1="216" y1="180" x2="296" y2="200" stroke="white" stroke-width="26" stroke-linecap="round"/>
+  <!-- シートチューブ -->
+  <line x1="256" y1="220" x2="216" y2="180" stroke="white" stroke-width="26" stroke-linecap="round"/>
+  <!-- ダウンチューブ（BB→ヘッドチューブ） -->
+  <line x1="256" y1="220" x2="296" y2="200" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  <!-- サドル -->
+  <line x1="200" y1="175" x2="240" y2="175" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <!-- シートポスト -->
+  <line x1="220" y1="175" x2="220" y2="155" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- ハンドル -->
+  <line x1="296" y1="200" x2="318" y2="175" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <line x1="305" y1="163" x2="332" y2="183" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <!-- BB（ペダル軸） -->
+  <circle cx="256" cy="220" r="14" fill="white"/>
+</svg>

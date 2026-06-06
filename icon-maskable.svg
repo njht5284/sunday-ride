@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- maskable: 背景を画面端まで塗る（safe zone内にアイコンを収める） -->
+  <rect width="512" height="512" fill="#2b6cb0"/>
+  <!-- セーフゾーン内（128px padding相当）に自転車を縮小配置 -->
+  <circle cx="172" cy="318" r="72" fill="none" stroke="white" stroke-width="22"/>
+  <circle cx="340" cy="318" r="72" fill="none" stroke="white" stroke-width="22"/>
+  <line x1="172" y1="318" x2="256" y2="220" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  <line x1="340" y1="318" x2="284" y2="204" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  <line x1="220" y1="188" x2="284" y2="204" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  <line x1="256" y1="220" x2="220" y2="188" stroke="white" stroke-width="20" stroke-linecap="round"/>
+  <line x1="256" y1="220" x2="284" y2="204" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <line x1="206" y1="183" x2="238" y2="183" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="284" y1="204" x2="302" y2="183" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <line x1="293" y1="172" x2="314" y2="188" stroke="white" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="256" cy="220" r="10" fill="white"/>
+</svg>
