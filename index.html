@@ -47,12 +47,13 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 }
 @media(max-width:600px){ .setup-grid { grid-template-columns: 1fr 1fr; } }
 @media(max-width:360px){ .setup-grid { grid-template-columns: 1fr; } }
-.setup-group { display: flex; flex-direction: column; gap: 4px; }
+.setup-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .setup-label { font-size: 0.75rem; color: #718096; font-weight: 600; }
 .setup-group input, .setup-group select {
   border: 1px solid #cbd5e0; border-radius: 8px;
   padding: 7px 10px; font-size: 0.9rem; color: #2d3748;
   background: #f7fafc; height: 42px;
+  width: 100%; min-width: 0; max-width: 100%;
 }
 .setup-group select { padding-right: 6px; }
 /* 時刻セレクト（時：分） */
