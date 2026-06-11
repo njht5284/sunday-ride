@@ -1,7 +1,7 @@
 {
-  "name": "北摂ライド天気チェッカー",
-  "short_name": "北摂天気",
-  "description": "宝塚発・北摂エリアのサイクリング天気判定ツール",
+  "name": "サイクル天気ナビ",
+  "short_name": "天気ナビ",
+  "description": "サイクリング出発判断・天気チェックツール",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ebf8ff",
