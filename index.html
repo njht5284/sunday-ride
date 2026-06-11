@@ -373,6 +373,10 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <div id="equip-cond-wrap">
     <div id="equip-cond"></div>
   </div>
+  <div id="route-map-section" style="display:none; margin-top:14px">
+    <p class="links-row-label">🗺️ コースロードマップ（道の駅あわじ ⇔ <span id="route-map-dest-name"></span>）</p>
+    <iframe id="route-map-iframe" style="width:100%; height:320px; border:0; border-radius:8px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
 </div>
 
 <!-- ③ 天気確認リンク -->
@@ -689,6 +693,16 @@ function updateDestUI() {
   const zoom = routeZoom(start.lat, start.lon, dest.lat, dest.lon);
   const windyEl = document.getElementById('windy-link');
   if (windyEl) windyEl.href = `https://www.windy.com/?${midLat},${midLon},${zoom}`;
+  // 淡路島周回コース選択時のみロードマップを表示
+  const mapSection = document.getElementById('route-map-section');
+  if (dest.start) {
+    document.getElementById('route-map-dest-name').textContent = dest.name;
+    document.getElementById('route-map-iframe').src =
+      `https://maps.google.com/maps?saddr=${start.lat},${start.lon}&daddr=${dest.lat},${dest.lon}&output=embed&dirflg=b`;
+    mapSection.style.display = 'block';
+  } else {
+    mapSection.style.display = 'none';
+  }
   const radarEl = document.getElementById('radar-link');
   if (radarEl) radarEl.href = `https://weathernews.jp/radar/?lat=${midLat}&lon=${midLon}&zoom=${zoom}`;
   const nowcEl = document.getElementById('nowc-link');
