@@ -510,9 +510,9 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <div class="criterion">
     <input type="checkbox" id="w5" data-type="warn" disabled>
     <label for="w5">
-      <strong>目的地と宝塚の<span class="thr">気温差が 5°C 以上</span></strong>
+      <strong>出発地と目的地の<span class="thr">気温差が 5°C 以上</span></strong>
       <span class="bdg bdg-warn">注意</span><span class="bdg bdg-auto" id="w5-tag" style="display:none">自動</span><span class="eval-ok" id="w5-ok" style="display:none">✅ 問題なし</span>
-      <span class="note">出発時刻の宝塚 vs 目的地の気温差。防寒・補給計画の見直しを
+      <span class="note">出発時刻の出発地 vs 目的地の気温差。防寒・補給計画の見直しを
         <span class="auto-rsn" id="w5-rsn"></span></span>
     </label>
   </div>
@@ -571,7 +571,7 @@ const AWAJI = {
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224739052',
     mapEmbed:'https://www.google.com/maps/d/embed?mid=121opj-aNXlGD6YfROXtux_0fiEBJoDM',
     course:{ dist:'10〜15km', time:'約1時間', elev:'約100m', supply:'道の駅あわじ・江崎漁港周辺',
-      note:'明石海峡大橋を間近に望む絶景区間。 / 観光客・歩行者が多く、橋周辺は速度control必須。 / 短時間で帰還可能、エスケープ容易。' }},
+      note:'明石海峡大橋を間近に望む絶景区間。 / 観光客・歩行者が多く、橋周辺は速度管理必須。 / 短時間で帰還可能、エスケープ容易。' }},
   awaji_west:   { name:'西海岸めぐり', pref:'兵庫県（淡路市）', lat:34.555, lon:134.895,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'🌅',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224739452',
@@ -920,7 +920,7 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
   // w2: 前夜〜出発前の降水（3地点）
   const prevPrecips = locData.map((d, i) => Math.max(0, ...prevI[i].map(j => d.h.precipitation[j] ?? 0)));
   const prevPrecip  = Math.max(...prevPrecips);
-  const prevLabel   = ['宝塚', '中間', dest.name];
+  const prevLabel   = [locData[0].name, '中間', dest.name];
   const prevMax     = prevLabel[prevPrecips.indexOf(prevPrecip)];
   autoSet('w2', prevPrecip > 0.1, `前夜〜出発前の最大降水量 ${prevPrecip.toFixed(1)} mm（${prevMax}付近）`);
 
@@ -938,7 +938,7 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
   if (takoTemp !== null && destTemp !== null) {
     const diff = takoTemp - destTemp;
     autoSet('w5', Math.abs(diff) >= 5,
-      `宝塚${takoTemp.toFixed(1)}°C vs ${dest.name}${destTemp.toFixed(1)}°C（差 ${Math.abs(diff).toFixed(1)}°C）`);
+      `${locData[0].name}${takoTemp.toFixed(1)}°C vs ${dest.name}${destTemp.toFixed(1)}°C（差 ${Math.abs(diff).toFixed(1)}°C）`);
   }
 
   // w6: 強風（7m/s以上）
@@ -1068,7 +1068,7 @@ function evaluate() {
   const sc = ['c1','c2','c3','c4'].filter(id => document.getElementById(id)?.checked).length;
   const wc = ['w1','w2','w3','w4','w5','w6'].filter(id => document.getElementById(id)?.checked).length;
   const box = document.getElementById('verdict');
-  document.getElementById('counter').textContent = `即中止: ${sc}/5  ／  注意: ${wc}/5`;
+  document.getElementById('counter').textContent = `即中止: ${sc}/4  ／  注意: ${wc}/6`;
   box.className = 'verdict-box';
   if      (sc >= 1)  { box.classList.add('verdict-cancel');  box.textContent = '🚫 中止 — 即中止ラインに該当'; }
   else if (wc >= 3)  { box.classList.add('verdict-cancel');  box.textContent = '🛑 中止推奨 — 注意項目が3つ以上'; }
