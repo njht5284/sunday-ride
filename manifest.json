@@ -1,6 +1,6 @@
 {
-  "name": "サイクル天気ナビ",
-  "short_name": "天気ナビ",
+  "name": "ライド出発判断チェッカー",
+  "short_name": "ライド判断",
   "description": "サイクリング出発判断・天気チェックツール",
   "start_url": "./index.html",
   "display": "standalone",

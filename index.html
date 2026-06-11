@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>サイクル天気ナビ</title>
+<title>ライド出発判断チェッカー</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2b6cb0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="天気ナビ">
+<meta name="apple-mobile-web-app-title" content="ライド判断">
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -271,8 +271,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 </head>
 <body>
 
-<h1>🚴‍♂️ サイクリング出発判断チェッカー</h1>
-<p class="subtitle" id="subtitle">出発・帰還地：宝塚市（固定）／ 目的地：北摂エリアから選択</p>
+<h1>🚴‍♂️ ライド出発判断チェッカー</h1>
 
 <!-- ① 設定 -->
 <div class="section">
@@ -694,8 +693,6 @@ function updateDestUI() {
   document.getElementById('start-link-label').textContent = start.name;
   const takoEl = document.getElementById('tako-link');
   if (takoEl && start.wnUrl) takoEl.href = start.wnUrl;
-  document.getElementById('subtitle').textContent =
-    `出発・帰還地：${start.name}（固定）／ ${dest.start ? 'コース' : '目的地'}：${dest.start ? '淡路島周回' : '北摂エリア'}から選択`;
   document.getElementById('dest-chip').textContent = `${dest.emoji} ${dest.name}（${dest.pref}）`;
   document.getElementById('dest-link').href = dest.wnUrl;
   document.getElementById('dest-link-label').textContent = dest.name;
