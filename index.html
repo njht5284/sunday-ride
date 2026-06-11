@@ -379,12 +379,11 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
     <div id="equip-cond"></div>
   </div>
   <div id="route-map-section" style="display:none; margin-top:14px">
-    <p class="links-row-label">🗺️ コースロードマップ</p>
-    <div class="links-grid">
-      <a class="link-btn" id="route-map-link" href="#" target="_blank">
-        <span class="li">🗺️</span>公式ロードマップで確認<br><span id="route-map-dest-name"></span>
-      </a>
-    </div>
+    <p class="links-row-label">🗺️ コースロードマップ — <span id="route-map-dest-name"></span></p>
+    <iframe id="route-map-iframe" style="width:100%; height:320px; border:0; border-radius:8px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <p class="links-row-label" style="margin-top:6px">
+      <a id="route-map-link" href="#" target="_blank" style="color:#2b6cb0">🔗 公式サイトで詳細を見る</a>
+    </p>
   </div>
 </div>
 
@@ -569,31 +568,37 @@ const AWAJI = {
   awaji_akashi: { name:'明石海峡大橋周遊', pref:'兵庫県（淡路市）', lat:34.617, lon:134.962,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'🌉',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224739052',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=121opj-aNXlGD6YfROXtux_0fiEBJoDM&ehbc=2E312F',
     course:{ dist:'10〜15km', time:'約1時間', elev:'約100m', supply:'道の駅あわじ・江崎漁港周辺',
       note:'明石海峡大橋を間近に望む絶景区間。 / 観光客・歩行者が多く、橋周辺は速度control必須。 / 短時間で帰還可能、エスケープ容易。' }},
   awaji_west:   { name:'西海岸めぐり', pref:'兵庫県（淡路市）', lat:34.555, lon:134.895,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'🌅',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224739452',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=1wOrtJLmiPBwGwVFb1Om8F6eT5sR-RGY&ehbc=2E312F',
     course:{ dist:'20〜50km', time:'1.5〜3時間', elev:'約300〜600m', supply:'北淡・尾崎周辺コンビニ',
       note:'西海岸線（国道28号）は北西の海風が強い区間あり。 / 夕陽スポットで観光車両が多く視界注意。 / ほぼ全区間で沿道に補給可能。' }},
   awaji_izanagi:{ name:'イザナギコース', pref:'兵庫県（淡路市）', lat:34.453, lon:134.873,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'⛩️',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224740452',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=1FYCAQcOSSsu_x6oOJbOD6RrGoqlaBD8&ehbc=2E312F',
     course:{ dist:'55km', time:'3.5〜4.5時間', elev:'約700m', supply:'一宮・洲本方面コンビニ',
       note:'伊弉諾神宮へ向かう内陸部はアップダウン連続。 / 海岸部は強風時にあおられやすい。 / 一宮エリアで補給ポイント確保しやすい。' }},
   awaji_half:   { name:'アワイチハーフ', pref:'兵庫県（洲本市）', lat:34.347, lon:134.898,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28206/', warnPref:'280000', warnArea:'洲本', emoji:'🌊',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224742052',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=1qAQR8SoYyxWJJjSbRLO7Z7HNYkcn6ig&ehbc=2E312F',
     course:{ dist:'80km', time:'5〜6時間', elev:'約900m', supply:'洲本市街・大浜周辺',
       note:'洲本市街で補給・トイレを確保しやすい。 / 海岸線は終日強風になりやすく特に午後注意。 / 洲本バスセンターから一部区間離脱可能。' }},
   awaji_flat100:{ name:'アワイチフラット100km', pref:'兵庫県（南あわじ市）', lat:34.268, lon:134.783,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28227/', warnPref:'280000', warnArea:'南あわじ', emoji:'🧭',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224742552',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=1B6GWRrqXSQaawZxxWfGrfDqQ-eSMiaE&ehbc=2E312F',
     course:{ dist:'100km', time:'6〜7時間', elev:'約1,100m', supply:'南あわじ市内コンビニ',
       note:'南部は信号少なく走りやすいが補給間隔が空く区間あり。 / 三原平野部は田園地帯で強風時に遮るものがない。 / おのころ島神社周辺で休憩・補給可能。' }},
   awaji_150:    { name:'アワイチ150km（一周）', pref:'兵庫県（南あわじ市）', lat:34.240, lon:134.638,
     start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28227/', warnPref:'280000', warnArea:'南あわじ', emoji:'🏝️',
     courseUrl:'https://www.cyclism-awaji.com/course/#cc-m-header-11224743352',
+    mapEmbed:'https://www.google.com/maps/d/embed?mid=1NMCxdnvIwg3E-t1KZPbQfVgpSBEZtRs&ehbc=2E312F',
     course:{ dist:'約150km（一周）', time:'約10時間', elev:'約2,092m', supply:'海岸線沿いにコンビニ多数',
       note:'岩屋〜洲本間は交通量・信号が多い国道。集団走行は隊列に注意。 / 福良〜湊間はアップダウン連続、後半は疲労との闘い。 / 由良からの山岳区間は下りのスピード管理必須。' }},
 };
@@ -712,6 +717,7 @@ function updateDestUI() {
   const mapSection = document.getElementById('route-map-section');
   if (dest.start) {
     document.getElementById('route-map-dest-name').textContent = `${dest.emoji} ${dest.name}`;
+    document.getElementById('route-map-iframe').src = dest.mapEmbed;
     document.getElementById('route-map-link').href = dest.courseUrl;
     mapSection.style.display = 'block';
   } else {
