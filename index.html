@@ -13,11 +13,16 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
   background: #f0f4f8; color: #1a202c;
-  padding: 16px; max-width: 720px; margin: 0 auto;
+  padding: 16px; margin: 0 auto;
 }
+@media (min-width: 720px) {
+  body { max-width: 720px; }
+}
+img, iframe { max-width: 100%; }
 h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 .subtitle { font-size: 0.8rem; color: #718096; margin-bottom: 14px; }
 
@@ -697,8 +702,10 @@ function updateDestUI() {
   const mapSection = document.getElementById('route-map-section');
   if (dest.start) {
     document.getElementById('route-map-dest-name').textContent = dest.name;
+    // 淡路島周回は常に時計回り（東海岸を南下）固定のため、洲本付近を経由地に指定
+    const CLOCKWISE_WAYPOINT = '34.347,134.898';
     document.getElementById('route-map-iframe').src =
-      `https://maps.google.com/maps?saddr=${start.lat},${start.lon}&daddr=${dest.lat},${dest.lon}&output=embed&dirflg=b`;
+      `https://maps.google.com/maps?saddr=${start.lat},${start.lon}&daddr=${CLOCKWISE_WAYPOINT}+to:${dest.lat},${dest.lon}&output=embed&dirflg=b`;
     mapSection.style.display = 'block';
   } else {
     mapSection.style.display = 'none';
