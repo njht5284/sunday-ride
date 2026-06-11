@@ -1,5 +1,5 @@
 // 北摂ライド天気チェッカー — Service Worker
-const CACHE_NAME = 'cycle-weather-v1';
+const CACHE_NAME = 'cycle-weather-v2';
 const STATIC_FILES = [
   './',
   './index.html',

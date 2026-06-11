@@ -317,30 +317,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
     </div>
     <div class="setup-group">
       <span class="setup-label" id="dest-label">📍 目的地（北摂）</span>
-      <select id="destination">
-        <optgroup label="大阪府" id="og-osaka">
-          <option value="nosecho">能勢町</option>
-          <option value="toyono">豊能町</option>
-          <option value="minoh">箕面市</option>
-        </optgroup>
-        <optgroup label="兵庫県" id="og-hyogo">
-          <option value="inagawa">猪名川町</option>
-          <option value="sanda">三田市</option>
-          <option value="sasayama">丹波篠山市</option>
-          <option value="kobekita">神戸市北区</option>
-        </optgroup>
-        <optgroup label="京都府" id="og-kyoto">
-          <option value="kameoka">亀岡市</option>
-        </optgroup>
-        <optgroup label="淡路島（道の駅あわじ発）" id="og-awaji" style="display:none">
-          <option value="awaji_akashi">明石海峡大橋周遊（10〜15km）</option>
-          <option value="awaji_west">西海岸めぐり（20〜50km）</option>
-          <option value="awaji_izanagi">イザナギコース（55km）</option>
-          <option value="awaji_half">アワイチハーフ（80km）</option>
-          <option value="awaji_flat100">アワイチフラット（100km）</option>
-          <option value="awaji_150">アワイチ一周（150km）</option>
-        </optgroup>
-      </select>
+      <select id="destination"></select>
     </div>
     <div class="btn-group">
       <button id="fetch-btn" onclick="fetchAll()">🌐 天気を自動取得</button>
@@ -606,6 +583,25 @@ const AWAJI = {
 
 const ALL_DESTS = { ...HOKUSETSU, ...AWAJI };
 
+// 目的地プルダウンの選択肢定義（エリア別に物理的に入れ替える）
+const DEST_OPTIONS = {
+  hokusetsu: [
+    { label:'大阪府', items:[['nosecho','能勢町'],['toyono','豊能町'],['minoh','箕面市']] },
+    { label:'兵庫県', items:[['inagawa','猪名川町'],['sanda','三田市'],['sasayama','丹波篠山市'],['kobekita','神戸市北区']] },
+    { label:'京都府', items:[['kameoka','亀岡市']] },
+  ],
+  awaji: [
+    { label:'淡路島（道の駅あわじ発）', items:[
+      ['awaji_akashi','明石海峡大橋周遊（10〜15km）'],
+      ['awaji_west','西海岸めぐり（20〜50km）'],
+      ['awaji_izanagi','イザナギコース（55km）'],
+      ['awaji_half','アワイチハーフ（80km）'],
+      ['awaji_flat100','アワイチフラット（100km）'],
+      ['awaji_150','アワイチ一周（150km）'],
+    ] },
+  ],
+};
+
 const RAIN_CODES    = new Set([51,53,55,61,63,65,66,67,80,81,82,95,96,99]);
 const THUNDER_CODES = new Set([95,96,99]);
 const TRIP_H    = 6;
@@ -675,16 +671,16 @@ const EQUIP_COND = [
 
 function updateAreaUI() {
   const isAwaji = document.getElementById('start-point').value === 'awaji';
-  document.getElementById('og-osaka').style.display = isAwaji ? 'none' : '';
-  document.getElementById('og-hyogo').style.display = isAwaji ? 'none' : '';
-  document.getElementById('og-kyoto').style.display = isAwaji ? 'none' : '';
-  document.getElementById('og-awaji').style.display = isAwaji ? '' : 'none';
   document.getElementById('dest-label').textContent = isAwaji ? '📍 コース（淡路島）' : '📍 目的地（北摂）';
   const sel = document.getElementById('destination');
-  const visibleGroup = isAwaji ? 'og-awaji' : 'og-osaka';
-  // 表示中グループに選択肢が無ければ先頭を選択
-  if (!ALL_DESTS[sel.value] || (isAwaji !== (sel.value in AWAJI))) {
-    sel.value = document.getElementById(visibleGroup).querySelector('option').value;
+  const prev = sel.value;
+  // 選択中エリアの選択肢のみをセレクトに構築（display:none非対応ブラウザ対策）
+  sel.innerHTML = DEST_OPTIONS[isAwaji ? 'awaji' : 'hokusetsu'].map(g =>
+    `<optgroup label="${g.label}">${g.items.map(([v,t]) => `<option value="${v}">${t}</option>`).join('')}</optgroup>`
+  ).join('');
+  // 前の選択が同エリア内なら維持、そうでなければ先頭を選択
+  if (prev && ALL_DESTS[prev] && (isAwaji === (prev in AWAJI))) {
+    sel.value = prev;
   }
 }
 
