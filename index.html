@@ -50,9 +50,6 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   background: #f7fafc; height: 42px;
 }
 .setup-group select { padding-right: 6px; }
-.area-toggle { display: flex; gap: 14px; align-items: center; padding: 6px 0; flex-wrap: wrap; }
-.area-toggle label { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; }
-.area-toggle input { width: 18px; height: 18px; accent-color: #2b6cb0; cursor: pointer; }
 /* 時刻セレクト（時：分） */
 .time-select {
   display: flex; align-items: center; gap: 4px; height: 42px;
@@ -306,11 +303,11 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
       </div>
     </div>
     <div class="setup-group">
-      <span class="setup-label">🗾 エリア</span>
-      <div class="area-toggle">
-        <label><input type="radio" name="area" value="hokusetsu" id="area-hokusetsu" checked> 🏠 宝塚発（北摂）</label>
-        <label><input type="radio" name="area" value="awaji" id="area-awaji"> 🏝️ 淡路島周回</label>
-      </div>
+      <span class="setup-label">🏠 出発地</span>
+      <select id="start-point">
+        <option value="hokusetsu">宝塚市（北摂エリア）</option>
+        <option value="awaji">道の駅あわじ（淡路島周回）</option>
+      </select>
     </div>
     <div class="setup-group">
       <span class="setup-label" id="dest-label">📍 目的地（北摂）</span>
@@ -636,7 +633,7 @@ const EQUIP_COND = [
   minSel.value = validMins.includes(pm) ? pm : '00';
 
   if (p.area === 'awaji') {
-    document.getElementById('area-awaji').checked = true;
+    document.getElementById('start-point').value = 'awaji';
   }
   updateAreaUI();
   if (p.dest && ALL_DESTS[p.dest]) {
@@ -644,9 +641,7 @@ const EQUIP_COND = [
   }
   updateDestUI();
   document.getElementById('destination').addEventListener('change', updateDestUI);
-  document.querySelectorAll('input[name="area"]').forEach(r =>
-    r.addEventListener('change', () => { updateAreaUI(); updateDestUI(); })
-  );
+  document.getElementById('start-point').addEventListener('change', () => { updateAreaUI(); updateDestUI(); });
   if (p.checks) {
     p.checks.split(',').forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
     evaluate();
@@ -654,7 +649,7 @@ const EQUIP_COND = [
 })();
 
 function updateAreaUI() {
-  const isAwaji = document.getElementById('area-awaji').checked;
+  const isAwaji = document.getElementById('start-point').value === 'awaji';
   document.getElementById('og-osaka').style.display = isAwaji ? 'none' : '';
   document.getElementById('og-hyogo').style.display = isAwaji ? 'none' : '';
   document.getElementById('og-kyoto').style.display = isAwaji ? 'none' : '';
@@ -672,7 +667,7 @@ function updateDestUI() {
   const key  = document.getElementById('destination').value;
   const dest = ALL_DESTS[key];
   if (!dest) return;
-  const start = dest.start || TAKARAZUKA;
+  const start = document.getElementById('start-point').value === 'awaji' ? AWAJI_START : TAKARAZUKA;
   document.getElementById('start-chip-1').innerHTML = `📍 ${start.name} <small>出発・帰還固定</small>`;
   document.getElementById('start-chip-2').textContent = `📍 ${start.name}`;
   document.getElementById('start-link-label').textContent = start.name;
@@ -736,8 +731,8 @@ async function fetchAll() {
   btn.disabled = true; btn.textContent = '⏳ 取得中…';
   clearAuto();
 
-  // 出発地（通常は宝塚市。目的地ごとにstartを上書き可能）
-  const start = dest.start || TAKARAZUKA;
+  // 出発地（プルダウンで選択：宝塚市 または 道の駅あわじ）
+  const start = document.getElementById('start-point').value === 'awaji' ? AWAJI_START : TAKARAZUKA;
 
   // 中間点（出発地〜目的地の中点）
   const mid = {
@@ -1104,7 +1099,7 @@ function parseHash() {
 }
 function updateHash(d, t, k) {
   const checks = ALL_IDS.filter(id => document.getElementById(id)?.checked).join(',');
-  const area = document.getElementById('area-awaji').checked ? 'awaji' : 'hokusetsu';
+  const area = document.getElementById('start-point').value === 'awaji' ? 'awaji' : 'hokusetsu';
   history.replaceState(null, '', `#date=${d}&time=${t}&dest=${k}&area=${area}${checks?'&checks='+checks:''}`);
 }
 
