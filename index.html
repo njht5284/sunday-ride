@@ -50,6 +50,9 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   background: #f7fafc; height: 42px;
 }
 .setup-group select { padding-right: 6px; }
+.area-toggle { display: flex; gap: 14px; align-items: center; padding: 6px 0; flex-wrap: wrap; }
+.area-toggle label { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; }
+.area-toggle input { width: 18px; height: 18px; accent-color: #2b6cb0; cursor: pointer; }
 /* 時刻セレクト（時：分） */
 .time-select {
   display: flex; align-items: center; gap: 4px; height: 42px;
@@ -266,7 +269,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 <body>
 
 <h1>🚴‍♂️ サイクリング出発判断チェッカー</h1>
-<p class="subtitle">出発・帰還地：宝塚市（固定）／ 目的地：北摂エリアから選択</p>
+<p class="subtitle" id="subtitle">出発・帰還地：宝塚市（固定）／ 目的地：北摂エリアから選択</p>
 
 <!-- ① 設定 -->
 <div class="section">
@@ -303,21 +306,36 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
       </div>
     </div>
     <div class="setup-group">
-      <span class="setup-label">📍 目的地（北摂）</span>
+      <span class="setup-label">🗾 エリア</span>
+      <div class="area-toggle">
+        <label><input type="radio" name="area" value="hokusetsu" id="area-hokusetsu" checked> 🏠 宝塚発（北摂）</label>
+        <label><input type="radio" name="area" value="awaji" id="area-awaji"> 🏝️ 淡路島周回</label>
+      </div>
+    </div>
+    <div class="setup-group">
+      <span class="setup-label" id="dest-label">📍 目的地（北摂）</span>
       <select id="destination">
-        <optgroup label="大阪府">
+        <optgroup label="大阪府" id="og-osaka">
           <option value="nosecho">能勢町</option>
           <option value="toyono">豊能町</option>
           <option value="minoh">箕面市</option>
         </optgroup>
-        <optgroup label="兵庫県">
+        <optgroup label="兵庫県" id="og-hyogo">
           <option value="inagawa">猪名川町</option>
           <option value="sanda">三田市</option>
           <option value="sasayama">丹波篠山市</option>
           <option value="kobekita">神戸市北区</option>
         </optgroup>
-        <optgroup label="京都府">
+        <optgroup label="京都府" id="og-kyoto">
           <option value="kameoka">亀岡市</option>
+        </optgroup>
+        <optgroup label="淡路島（道の駅あわじ発）" id="og-awaji" style="display:none">
+          <option value="awaji_akashi">明石海峡大橋周遊（10〜15km）</option>
+          <option value="awaji_west">西海岸めぐり（20〜50km）</option>
+          <option value="awaji_izanagi">イザナギコース（55km）</option>
+          <option value="awaji_half">アワイチハーフ（80km）</option>
+          <option value="awaji_flat100">アワイチフラット（100km）</option>
+          <option value="awaji_150">アワイチ一周（150km）</option>
         </optgroup>
       </select>
     </div>
@@ -328,11 +346,11 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   </div>
 
   <div class="route-chips" id="route-chips">
-    <span class="chip chip-fixed">📍 宝塚市 <small>出発・帰還固定</small></span>
+    <span class="chip chip-fixed" id="start-chip-1">📍 宝塚市 <small>出発・帰還固定</small></span>
     <span class="arr">→</span>
     <span class="chip chip-dest" id="dest-chip">目的地を選択</span>
     <span class="arr">→</span>
-    <span class="chip chip-fixed">📍 宝塚市</span>
+    <span class="chip chip-fixed" id="start-chip-2">📍 宝塚市</span>
   </div>
 
   <div class="course-card" id="course-card">
@@ -366,7 +384,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <p class="links-row-label">🤖 自動取得済みリンク（取得ボタン押下で反映）</p>
   <div class="links-grid">
     <a class="link-btn" id="tako-link" href="https://weathernews.jp/onebox/tenki/hyogo/28214/" target="_blank" onclick="markVisited(this)" data-auto-id="tako">
-      <span class="li">🏙️</span>ウェザーニュース<br>宝塚市<span class="auto-badge" style="display:none">自動取得済</span>
+      <span class="li">🏙️</span>ウェザーニュース<br><span id="start-link-label">宝塚市</span><span class="auto-badge" style="display:none">自動取得済</span>
     </a>
     <a class="link-btn" id="dest-link" href="#" target="_blank" onclick="markVisited(this)" data-auto-id="dest">
       <span class="li">📍</span>ウェザーニュース<br><span id="dest-link-label">目的地</span><span class="auto-badge" style="display:none">自動取得済</span>
@@ -533,6 +551,39 @@ const HOKUSETSU = {
 
 const TAKARAZUKA = { name:'宝塚市', lat:34.799, lon:135.360, warnPref:'280000', warnArea:'宝塚', emoji:'🏠' };
 
+// ── 淡路島周回（起点：道の駅あわじ） ──────────────────────────────────
+const AWAJI_START = { name:'道の駅あわじ', lat:34.604, lon:134.970, warnPref:'280000', warnArea:'淡路', emoji:'🏁',
+  wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/' };
+
+const AWAJI = {
+  awaji_akashi: { name:'明石海峡大橋周遊', pref:'兵庫県（淡路市）', lat:34.617, lon:134.962,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'🌉',
+    course:{ dist:'10〜15km', time:'約1時間', elev:'約100m', supply:'道の駅あわじ・江崎漁港周辺',
+      note:'明石海峡大橋を間近に望む絶景区間。 / 観光客・歩行者が多く、橋周辺は速度control必須。 / 短時間で帰還可能、エスケープ容易。' }},
+  awaji_west:   { name:'西海岸めぐり', pref:'兵庫県（淡路市）', lat:34.555, lon:134.895,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'🌅',
+    course:{ dist:'20〜50km', time:'1.5〜3時間', elev:'約300〜600m', supply:'北淡・尾崎周辺コンビニ',
+      note:'西海岸線（国道28号）は北西の海風が強い区間あり。 / 夕陽スポットで観光車両が多く視界注意。 / ほぼ全区間で沿道に補給可能。' }},
+  awaji_izanagi:{ name:'イザナギコース', pref:'兵庫県（淡路市）', lat:34.453, lon:134.873,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28492/', warnPref:'280000', warnArea:'淡路', emoji:'⛩️',
+    course:{ dist:'55km', time:'3.5〜4.5時間', elev:'約700m', supply:'一宮・洲本方面コンビニ',
+      note:'伊弉諾神宮へ向かう内陸部はアップダウン連続。 / 海岸部は強風時にあおられやすい。 / 一宮エリアで補給ポイント確保しやすい。' }},
+  awaji_half:   { name:'アワイチハーフ', pref:'兵庫県（洲本市）', lat:34.347, lon:134.898,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28206/', warnPref:'280000', warnArea:'洲本', emoji:'🌊',
+    course:{ dist:'80km', time:'5〜6時間', elev:'約900m', supply:'洲本市街・大浜周辺',
+      note:'洲本市街で補給・トイレを確保しやすい。 / 海岸線は終日強風になりやすく特に午後注意。 / 洲本バスセンターから一部区間離脱可能。' }},
+  awaji_flat100:{ name:'アワイチフラット100km', pref:'兵庫県（南あわじ市）', lat:34.268, lon:134.783,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28227/', warnPref:'280000', warnArea:'南あわじ', emoji:'🧭',
+    course:{ dist:'100km', time:'6〜7時間', elev:'約1,100m', supply:'南あわじ市内コンビニ',
+      note:'南部は信号少なく走りやすいが補給間隔が空く区間あり。 / 三原平野部は田園地帯で強風時に遮るものがない。 / おのころ島神社周辺で休憩・補給可能。' }},
+  awaji_150:    { name:'アワイチ150km（一周）', pref:'兵庫県（南あわじ市）', lat:34.240, lon:134.638,
+    start: AWAJI_START, wnUrl:'https://weathernews.jp/onebox/tenki/hyogo/28227/', warnPref:'280000', warnArea:'南あわじ', emoji:'🏝️',
+    course:{ dist:'約150km（一周）', time:'約10時間', elev:'約2,092m', supply:'海岸線沿いにコンビニ多数',
+      note:'岩屋〜洲本間は交通量・信号が多い国道。集団走行は隊列に注意。 / 福良〜湊間はアップダウン連続、後半は疲労との闘い。 / 由良からの山岳区間は下りのスピード管理必須。' }},
+};
+
+const ALL_DESTS = { ...HOKUSETSU, ...AWAJI };
+
 const RAIN_CODES    = new Set([51,53,55,61,63,65,66,67,80,81,82,95,96,99]);
 const THUNDER_CODES = new Set([95,96,99]);
 const TRIP_H    = 6;
@@ -584,32 +635,63 @@ const EQUIP_COND = [
   const validMins = ['00','15','30','45'];
   minSel.value = validMins.includes(pm) ? pm : '00';
 
-  if (p.dest && HOKUSETSU[p.dest]) {
+  if (p.area === 'awaji') {
+    document.getElementById('area-awaji').checked = true;
+  }
+  updateAreaUI();
+  if (p.dest && ALL_DESTS[p.dest]) {
     document.getElementById('destination').value = p.dest;
   }
   updateDestUI();
   document.getElementById('destination').addEventListener('change', updateDestUI);
+  document.querySelectorAll('input[name="area"]').forEach(r =>
+    r.addEventListener('change', () => { updateAreaUI(); updateDestUI(); })
+  );
   if (p.checks) {
     p.checks.split(',').forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
     evaluate();
   }
 })();
 
+function updateAreaUI() {
+  const isAwaji = document.getElementById('area-awaji').checked;
+  document.getElementById('og-osaka').style.display = isAwaji ? 'none' : '';
+  document.getElementById('og-hyogo').style.display = isAwaji ? 'none' : '';
+  document.getElementById('og-kyoto').style.display = isAwaji ? 'none' : '';
+  document.getElementById('og-awaji').style.display = isAwaji ? '' : 'none';
+  document.getElementById('dest-label').textContent = isAwaji ? '📍 コース（淡路島）' : '📍 目的地（北摂）';
+  const sel = document.getElementById('destination');
+  const visibleGroup = isAwaji ? 'og-awaji' : 'og-osaka';
+  // 表示中グループに選択肢が無ければ先頭を選択
+  if (!ALL_DESTS[sel.value] || (isAwaji !== (sel.value in AWAJI))) {
+    sel.value = document.getElementById(visibleGroup).querySelector('option').value;
+  }
+}
+
 function updateDestUI() {
   const key  = document.getElementById('destination').value;
-  const dest = HOKUSETSU[key];
+  const dest = ALL_DESTS[key];
   if (!dest) return;
+  const start = dest.start || TAKARAZUKA;
+  document.getElementById('start-chip-1').innerHTML = `📍 ${start.name} <small>出発・帰還固定</small>`;
+  document.getElementById('start-chip-2').textContent = `📍 ${start.name}`;
+  document.getElementById('start-link-label').textContent = start.name;
+  const takoEl = document.getElementById('tako-link');
+  if (takoEl && start.wnUrl) takoEl.href = start.wnUrl;
+  document.getElementById('subtitle').textContent =
+    `出発・帰還地：${start.name}（固定）／ ${dest.start ? 'コース' : '目的地'}：${dest.start ? '淡路島周回' : '北摂エリア'}から選択`;
   document.getElementById('dest-chip').textContent = `${dest.emoji} ${dest.name}（${dest.pref}）`;
   document.getElementById('dest-link').href = dest.wnUrl;
   document.getElementById('dest-link-label').textContent = dest.name;
   const warnCode = dest.warnPref === '280000' ? '280000' : dest.warnPref === '260000' ? '260000' : '270000';
   document.getElementById('jma-warn-link').href =
     `https://www.jma.go.jp/bosai/warning/#area_type=offices&area_code=${warnCode}`;
-  document.getElementById('warn-link-label').textContent = `${dest.pref}・兵庫`;
+  document.getElementById('warn-link-label').textContent =
+    dest.start ? dest.pref : `${dest.pref}・兵庫`;
   // レーダー系リンクをルート中心・適切なズームに更新
-  const midLat = ((TAKARAZUKA.lat + dest.lat) / 2).toFixed(3);
-  const midLon = ((TAKARAZUKA.lon + dest.lon) / 2).toFixed(3);
-  const zoom = routeZoom(TAKARAZUKA.lat, TAKARAZUKA.lon, dest.lat, dest.lon);
+  const midLat = ((start.lat + dest.lat) / 2).toFixed(3);
+  const midLon = ((start.lon + dest.lon) / 2).toFixed(3);
+  const zoom = routeZoom(start.lat, start.lon, dest.lat, dest.lon);
   const windyEl = document.getElementById('windy-link');
   if (windyEl) windyEl.href = `https://www.windy.com/?${midLat},${midLon},${zoom}`;
   const radarEl = document.getElementById('radar-link');
@@ -647,19 +729,22 @@ async function fetchAll() {
   const destKey = document.getElementById('destination').value;
   if (!dateStr || !timeStr) { alert('出発日時を選択してください'); return; }
 
-  const dest = HOKUSETSU[destKey];
+  const dest = ALL_DESTS[destKey];
   const depH = parseInt(timeStr.split(':')[0], 10);
 
   const btn = document.getElementById('fetch-btn');
   btn.disabled = true; btn.textContent = '⏳ 取得中…';
   clearAuto();
 
-  // 中間点（宝塚〜目的地の中点）
+  // 出発地（通常は宝塚市。目的地ごとにstartを上書き可能）
+  const start = dest.start || TAKARAZUKA;
+
+  // 中間点（出発地〜目的地の中点）
   const mid = {
     name:  `中間点（${dest.name}方面）`,
     emoji: '🛣️',
-    lat:   (TAKARAZUKA.lat + dest.lat) / 2,
-    lon:   (TAKARAZUKA.lon + dest.lon) / 2,
+    lat:   (start.lat + dest.lat) / 2,
+    lon:   (start.lon + dest.lon) / 2,
   };
 
   document.getElementById('weather-section').style.display = 'block';
@@ -669,12 +754,12 @@ async function fetchAll() {
     '<p class="fetch-status" style="grid-column:1/-1">Open-Meteo ＋ JMA から取得中（3地点）…</p>';
 
   try {
-    const locations = [TAKARAZUKA, mid, dest];
+    const locations = [start, mid, dest];
     const [locData, warnActive] = await Promise.all([
       Promise.all(locations.map(loc => fetchOpenMeteo(loc))),
       fetchJMAWarnings([
-        { prefCode: TAKARAZUKA.warnPref, areaName: TAKARAZUKA.warnArea },
-        { prefCode: dest.warnPref,       areaName: dest.warnArea },
+        { prefCode: start.warnPref, areaName: start.warnArea },
+        { prefCode: dest.warnPref,  areaName: dest.warnArea },
       ]),
     ]);
     renderCards(locData, dest, dateStr, depH);
@@ -1019,7 +1104,8 @@ function parseHash() {
 }
 function updateHash(d, t, k) {
   const checks = ALL_IDS.filter(id => document.getElementById(id)?.checked).join(',');
-  history.replaceState(null, '', `#date=${d}&time=${t}&dest=${k}${checks?'&checks='+checks:''}`);
+  const area = document.getElementById('area-awaji').checked ? 'awaji' : 'hokusetsu';
+  history.replaceState(null, '', `#date=${d}&time=${t}&dest=${k}&area=${area}${checks?'&checks='+checks:''}`);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
