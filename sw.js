@@ -1,5 +1,5 @@
 // 北摂ライド天気チェッカー — Service Worker
-const CACHE_NAME = 'hokusetsu-ride-v2';
+const CACHE_NAME = 'hokusetsu-ride-v3';
 const STATIC_FILES = [
   './',
   './index.html',
