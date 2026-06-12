@@ -1110,9 +1110,9 @@ function renderDepWeather(locData, dateStr, depH, timeStr) {
   const arrHours = [0, maxHours / 2, maxHours]; // 出発地・中間点・目的地の到着までの所要時間
 
   const cells = locData.map((d, i) => {
-    const targetH = depH + arrHours[i];
-    const hh = Math.floor(targetH) % 24, mm = Math.round((targetH % 1) * 60);
-    const timeLabel = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    const targetH = Math.round(depH + arrHours[i]);
+    const hh = targetH % 24;
+    const timeLabel = `${String(hh).padStart(2,'0')}:00`;
     const idx = getIdx(d.h.time, dateStr, targetH);
     if (idx < 0) return `<div style="flex:1; text-align:center; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 4px; font-size:0.74rem; color:#a0aec0">予報なし</div>`;
     const [ic, lbl] = wmoIcon(d.h.weathercode[idx] ?? -1);
