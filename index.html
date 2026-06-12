@@ -1101,21 +1101,34 @@ function wmoIcon(c) {
 function renderDepWeather(locData, dateStr, depH, timeStr) {
   const el = document.getElementById('dep-weather');
   const roles = ['🏠 出発地', '🛣️ 中間点', '📍 目的地'];
+
+  // コース最大所要時間から、中間点・目的地の到着想定時刻を算出
+  const destKey = document.getElementById('destination').value;
+  const courseTime = ALL_DESTS[destKey]?.course?.time || '';
+  const tm = courseTime.match(/([\d.]+)(?:〜([\d.]+))?時間/);
+  const maxHours = tm ? parseFloat(tm[2] || tm[1]) : 0;
+  const arrHours = [0, maxHours / 2, maxHours]; // 出発地・中間点・目的地の到着までの所要時間
+
   const cells = locData.map((d, i) => {
-    const idx = getIdx(d.h.time, dateStr, depH);
+    const targetH = depH + arrHours[i];
+    const hh = Math.floor(targetH) % 24, mm = Math.round((targetH % 1) * 60);
+    const timeLabel = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    const idx = getIdx(d.h.time, dateStr, targetH);
     if (idx < 0) return `<div style="flex:1; text-align:center; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 4px; font-size:0.74rem; color:#a0aec0">予報なし</div>`;
     const [ic, lbl] = wmoIcon(d.h.weathercode[idx] ?? -1);
     const t = d.h.temperature_2m[idx];
     const p = d.h.precipitation_probability[idx] ?? 0;
     return `<div style="flex:1; text-align:center; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 4px">
       <div style="font-size:0.68rem; color:#a0aec0; font-weight:700">${roles[i]}</div>
+      <div style="font-size:0.66rem; color:#718096">${d.name}</div>
       <div style="font-size:2.1rem; line-height:1.25">${ic}</div>
       <div style="font-size:0.74rem; font-weight:700; color:#2d3748">${lbl}</div>
+      <div style="font-size:0.7rem; color:#a0aec0">${timeLabel}頃</div>
       <div style="font-size:0.8rem; color:#4a5568; margin-top:3px">🌡 ${t != null ? t.toFixed(1) : '—'}°C</div>
       <div style="font-size:0.8rem; font-weight:700; color:${p >= 50 ? '#e53e3e' : p >= 30 ? '#d69e2e' : '#3182ce'}">☔ ${p}%</div>
     </div>`;
   }).join('');
-  el.innerHTML = `<p class="links-row-label">🚴 出発時刻（${timeStr}）の天気</p><div style="display:flex; gap:7px">${cells}</div>`;
+  el.innerHTML = `<p class="links-row-label">🚴 到着想定時刻の天気（出発 ${timeStr}）</p><div style="display:flex; gap:7px">${cells}</div>`;
   el.style.display = 'block';
 }
 
