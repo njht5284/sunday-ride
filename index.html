@@ -133,6 +133,14 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 .verdict-cancel { background: #fed7d7; color: #742a2a; border: 2px solid #fc8181; }
 .verdict-caution{ background: #fefcbf; color: #744210; border: 2px solid #f6e05e; }
 .verdict-default{ background: #e2e8f0; color: #4a5568; border: 2px solid #cbd5e0; }
+/* 取得後に画面上部へ常時固定表示するミニ判定バー（スマホ対応） */
+#verdict-bar {
+  display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 9px 12px; text-align: center;
+  font-size: 0.85rem; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+body.has-verdict-bar { padding-top: 56px; }
 .v-counter { font-size: 0.76rem; color: #a0aec0; margin-top: 6px; text-align: right; }
 
 /* ── リンク ── */
@@ -271,6 +279,8 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 </head>
 <body>
 
+<div id="verdict-bar"></div>
+
 <h1>🚴‍♂️ ライド出発判断チェッカー</h1>
 
 <!-- ① 設定 -->
@@ -323,6 +333,8 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
       <button class="btn-reset" onclick="resetAll()">🔄 リセット</button>
     </div>
   </div>
+
+  <p id="sun-info" style="display:none; margin-top:10px; font-size:0.8rem; font-weight:600; color:#4a5568; text-align:center; background:#fffaf0; border:1px solid #fbd38d; border-radius:8px; padding:7px"></p>
 
   <div class="route-chips" id="route-chips">
     <span class="chip chip-fixed" id="start-chip-1">📍 宝塚市 <small>出発・帰還固定</small></span>
@@ -394,11 +406,16 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <p class="links-sub" id="links-counter">目視確認: 0 / 3　自動取得: 0 / 3</p>
 </div>
 
+<!-- ③-2 天気概況（気象庁） -->
+<div class="section" id="overview-section" style="display:none">
+  <h2>📰 天気概況（気象庁） <span class="h2-sub" id="overview-meta"></span></h2>
+  <p id="overview-text" style="font-size:0.82rem; line-height:1.8; color:#4a5568; white-space:pre-wrap"></p>
+</div>
+
 <!-- ④ 天気カード -->
 <div class="section" id="weather-section" style="display:none">
   <h2>🌡️ ルート上の天気予報 <span class="h2-sub" id="weather-label"></span></h2>
   <div class="weather-grid" id="weather-cards"></div>
-  <p id="sun-info" style="display:none; margin-top:8px; font-size:0.8rem; font-weight:600; color:#4a5568; text-align:center; background:#fffaf0; border:1px solid #fbd38d; border-radius:8px; padding:7px"></p>
   <p class="data-src">データ: Open-Meteo (hourly) ＋ JMA警報API</p>
 </div>
 
@@ -789,13 +806,15 @@ async function fetchAll() {
 
   try {
     const locations = [start, mid, dest];
-    const [locData, warnActive] = await Promise.all([
+    const [locData, warnActive, overview] = await Promise.all([
       Promise.all(locations.map(loc => fetchOpenMeteo(loc))),
       fetchJMAWarnings([
         { prefCode: start.warnPref, areaName: start.warnArea },
         { prefCode: dest.warnPref,  areaName: dest.warnArea },
       ]),
+      fetchOverview(dest.warnPref),
     ]);
+    renderOverview(overview);
     renderCards(locData, dest, dateStr, depH);
     // 予報データが1地点も無い場合は判定せず明示（誤った「出発OK」を防ぐ）
     const hasData = locData.some(d => getIdxRange(d.h.time, dateStr, depH, TRIP_H).length > 0);
@@ -858,6 +877,25 @@ async function fetchJMAWarnings(targets) {
 // 33:大雨特別警報 03:大雨警報 10:大雨注意報 04:洪水警報 18:洪水注意報 14:雷注意報
 // 35:暴風特別警報 05:暴風警報 32:暴風雪特別警報 02:暴風雪警報 36:大雪特別警報 06:大雪警報 12:大雪注意報
 const RAIN_WARN_CODES = new Set(['33', '03', '10', '04', '18', '14', '35', '05', '32', '02', '36', '06', '12']);
+
+// 気象庁 天気概況文（都府県単位）
+async function fetchOverview(prefCode) {
+  try {
+    const res = await fetch(`https://www.jma.go.jp/bosai/forecast/data/overview_forecast/${prefCode}.json`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+function renderOverview(ovw) {
+  const sec = document.getElementById('overview-section');
+  if (!ovw || !ovw.text) { sec.style.display = 'none'; return; }
+  const dt = ovw.reportDatetime ? ovw.reportDatetime.slice(5,16).replace('T',' ').replace('-','/') : '';
+  document.getElementById('overview-meta').textContent = `— ${ovw.targetArea || ''}　${dt}発表`;
+  document.getElementById('overview-text').textContent =
+    (ovw.headlineText ? ovw.headlineText + '\n\n' : '') + ovw.text;
+  sec.style.display = 'block';
+}
 
 function checkWarning(data, areaName) {
   for (const at of data.areaTypes || []) {
@@ -1138,6 +1176,12 @@ function evaluate() {
   else if (wc >= 3)  { box.classList.add('verdict-cancel');  box.textContent = '🛑 中止推奨 — 注意項目が3つ以上'; }
   else if (wc >= 1)  { box.classList.add('verdict-caution'); box.textContent = '⚠️ 要注意 — 出発可能だが装備・エスケープを再確認'; }
   else               { box.classList.add('verdict-go');      box.textContent = '✅ 出発OK — 全条件クリア！'; }
+  // 画面上部の固定ミニバーにも同じ判定を表示（スクロールしても常に見える）
+  const bar = document.getElementById('verdict-bar');
+  bar.className = box.className.split(' ').filter(c => c.startsWith('verdict-'))[1] || '';
+  bar.textContent = box.textContent + `　(中止${sc}/4・注意${wc}/7)`;
+  bar.style.display = 'block';
+  document.body.classList.add('has-verdict-bar');
   const d = document.getElementById('departure-date').value;
   const t = getTimeStr();
   const k = document.getElementById('destination').value;
@@ -1185,6 +1229,10 @@ function resetAll() {
   document.getElementById('counter').textContent = '　';
   document.getElementById('links-counter').textContent = '目視確認: 0/3　自動取得: 0/3';
   document.getElementById('weather-section').style.display = 'none';
+  document.getElementById('overview-section').style.display = 'none';
+  document.getElementById('sun-info').style.display = 'none';
+  document.getElementById('verdict-bar').style.display = 'none';
+  document.body.classList.remove('has-verdict-bar');
   history.replaceState(null, '', location.pathname);
 }
 
