@@ -435,7 +435,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <div class="criterion">
     <input type="checkbox" id="c4" data-type="stop" disabled>
     <label for="c4">
-      <strong>ルート上に<span class="thr">大雨注意報・警報</span>が発令されている</strong>
+      <strong>ルート上に<span class="thr">大雨・暴風・大雪等の警報・注意報</span>が発令されている</strong>
       <span class="bdg bdg-stop">即中止</span><span class="bdg bdg-auto" id="c4-tag" style="display:none">自動</span><span class="eval-ok" id="c4-ok" style="display:none">✅ 問題なし</span>
       <span class="note">JMA警報API（出発地・目的地の各都府県）
         <span class="auto-rsn" id="c4-rsn"></span></span>
@@ -817,7 +817,7 @@ async function fetchOpenMeteo(loc) {
   const p = new URLSearchParams({
     latitude: loc.lat, longitude: loc.lon,
     hourly: 'precipitation_probability,precipitation,temperature_2m,windspeed_10m,weathercode',
-    timezone: 'Asia/Tokyo', forecast_days: 7, past_days: 1,
+    timezone: 'Asia/Tokyo', forecast_days: 6, past_days: 1,
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${p}`);
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
@@ -842,9 +842,10 @@ async function fetchJMAWarnings(targets) {
   return results.some(Boolean);
 }
 
-// 雨・雷・洪水に関係する警報・注意報コードのみ対象（乾燥・霜などは除外）
+// ライドに影響する警報・注意報コードのみ対象（乾燥・霜などは除外）
 // 33:大雨特別警報 03:大雨警報 10:大雨注意報 04:洪水警報 18:洪水注意報 14:雷注意報
-const RAIN_WARN_CODES = new Set(['33', '03', '10', '04', '18', '14']);
+// 35:暴風特別警報 05:暴風警報 32:暴風雪特別警報 02:暴風雪警報 36:大雪特別警報 06:大雪警報 12:大雪注意報
+const RAIN_WARN_CODES = new Set(['33', '03', '10', '04', '18', '14', '35', '05', '32', '02', '36', '06', '12']);
 
 function checkWarning(data, areaName) {
   for (const at of data.areaTypes || []) {
