@@ -398,6 +398,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 <div class="section" id="weather-section" style="display:none">
   <h2>🌡️ ルート上の天気予報 <span class="h2-sub" id="weather-label"></span></h2>
   <div class="weather-grid" id="weather-cards"></div>
+  <p id="sun-info" style="display:none; margin-top:8px; font-size:0.8rem; font-weight:600; color:#4a5568; text-align:center; background:#fffaf0; border:1px solid #fbd38d; border-radius:8px; padding:7px"></p>
   <p class="data-src">データ: Open-Meteo (hourly) ＋ JMA警報API</p>
 </div>
 
@@ -468,9 +469,9 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <div class="criterion">
     <input type="checkbox" id="w3" data-type="warn" disabled>
     <label for="w3">
-      <strong>旅程中の気温が<span class="thr">14°C 以下</span></strong>
+      <strong>旅程中の体感温度が<span class="thr">14°C 以下</span></strong>
       <span class="bdg bdg-warn">注意</span><span class="bdg bdg-auto" id="w3-tag" style="display:none">自動</span><span class="eval-ok" id="w3-ok" style="display:none">✅ 問題なし</span>
-      <span class="note">雨濡れによる低体温リスクが急上昇。防寒装備を確認
+      <span class="note">風冷えを考慮した体感温度で判定。雨濡れによる低体温リスクに注意
         <span class="auto-rsn" id="w3-rsn"></span></span>
     </label>
   </div>
@@ -495,10 +496,19 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
   <div class="criterion">
     <input type="checkbox" id="w6" data-type="warn" disabled>
     <label for="w6">
-      <strong>旅程中の風速が<span class="thr">7 m/s 以上</span></strong>
+      <strong>旅程中の風速が<span class="thr">7 m/s 以上</span>（突風 12 m/s 以上）</strong>
       <span class="bdg bdg-warn">注意</span><span class="bdg bdg-auto" id="w6-tag" style="display:none">自動</span><span class="eval-ok" id="w6-ok" style="display:none">✅ 問題なし</span>
-      <span class="note">10m高度・旅程中ピーク値。山間部は実際にはさらに大きい場合あり
+      <span class="note">10m高度・旅程中ピーク値。山間部・海岸線は実際にはさらに大きい場合あり
         <span class="auto-rsn" id="w6-rsn"></span></span>
+    </label>
+  </div>
+  <div class="criterion">
+    <input type="checkbox" id="w7" data-type="warn" disabled>
+    <label for="w7">
+      <strong>帰還見込みが<span class="thr">日没時刻を超える</span></strong>
+      <span class="bdg bdg-warn">注意</span><span class="bdg bdg-auto" id="w7-tag" style="display:none">自動</span><span class="eval-ok" id="w7-ok" style="display:none">✅ 問題なし</span>
+      <span class="note">コースの最大所要時間で算出。前後ライト・反射材の準備を
+        <span class="auto-rsn" id="w7-rsn"></span></span>
     </label>
   </div>
 </div>
@@ -605,7 +615,7 @@ const RAIN_CODES    = new Set([51,53,55,61,63,65,66,67,80,81,82,95,96,99]);
 const THUNDER_CODES = new Set([95,96,99]);
 const TRIP_H    = 6;
 const PREV_FROM = 21;
-const ALL_IDS  = ['c1','c2','c3','c4','w1','w2','w3','w4','w5','w6'];
+const ALL_IDS  = ['c1','c2','c3','c4','w1','w2','w3','w4','w5','w6','w7'];
 
 // 判定連動・追加装備テーブル
 const EQUIP_COND = [
@@ -613,7 +623,8 @@ const EQUIP_COND = [
   { ids:['c2'],  lvl:'warn', icon:'🛞', text:'タイヤ空気圧を低めに調整（雨天グリップ対策）' },
   { ids:['w1'],  lvl:'warn', icon:'☔', text:'レインウェア — 推奨（降水確率30〜49%）' },
   { ids:['w1'],  lvl:'info', icon:'🛞', text:'タイヤ空気圧を低めに調整（雨天グリップ対策）' },
-  { ids:['w3'],  lvl:'warn', icon:'🧤', text:'防寒グローブ・レッグウォーマー（気温14°C以下）' },
+  { ids:['w3'],  lvl:'warn', icon:'🧤', text:'防寒グローブ・レッグウォーマー（体感温度14°C以下）' },
+  { ids:['w7'],  lvl:'warn', icon:'💡', text:'フロント・テールライト必携（日没後走行の可能性）' },
   { ids:['w6'],  lvl:'warn', icon:'💨', text:'ウィンドブレーカー（風速7m/s以上）' },
   { ids:['w4'],  lvl:'warn', icon:'☔', text:'帰路用レインウェアを携行（帰路に降水リスク）' },
   { ids:['w2'],  lvl:'info', icon:'🛣️', text:'路面スリッピー注意 — スピード管理・下り注意' },
@@ -816,13 +827,14 @@ async function fetchAll() {
 async function fetchOpenMeteo(loc) {
   const p = new URLSearchParams({
     latitude: loc.lat, longitude: loc.lon,
-    hourly: 'precipitation_probability,precipitation,temperature_2m,windspeed_10m,weathercode',
+    hourly: 'precipitation_probability,precipitation,temperature_2m,apparent_temperature,windspeed_10m,wind_gusts_10m,weathercode',
+    daily: 'sunrise,sunset',
     timezone: 'Asia/Tokyo', forecast_days: 6, past_days: 1,
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${p}`);
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
   const data = await res.json();
-  return { ...loc, h: data.hourly };
+  return { ...loc, h: data.hourly, d: data.daily };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -901,12 +913,16 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
   // 旅程中集計（3地点）
   const allPops  = locData.flatMap((d, i) => tripI[i].map(j => d.h.precipitation_probability[j] ?? 0));
   const allWinds = locData.flatMap((d, i) => tripI[i].map(j => d.h.windspeed_10m[j] ?? 0));
+  const allGusts = locData.flatMap((d, i) => tripI[i].map(j => d.h.wind_gusts_10m?.[j] ?? 0));
   const allTemps = locData.flatMap((d, i) => tripI[i].map(j => d.h.temperature_2m[j] ?? 99));
+  const allApps  = locData.flatMap((d, i) => tripI[i].map(j => d.h.apparent_temperature?.[j] ?? 99));
   const allCodes = locData.flatMap((d, i) => tripI[i].map(j => d.h.weathercode[j] ?? 0));
 
   const maxTripPop = Math.max(0, ...allPops);
   const maxWind    = Math.max(0, ...allWinds);
+  const maxGust    = Math.max(0, ...allGusts);
   const minTemp    = Math.min(99, ...allTemps);
+  const minApp     = Math.min(99, ...allApps);
 
   // c1: 出発時刻に雨（3地点）
   const rainAtDep = depCodes.some(c => RAIN_CODES.has(c)) || maxDepPop >= 70;
@@ -933,8 +949,10 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
   const prevMax     = prevLabel[prevPrecips.indexOf(prevPrecip)];
   autoSet('w2', prevPrecip > 0.1, `前夜〜出発前の最大降水量 ${prevPrecip.toFixed(1)} mm（${prevMax}付近）`);
 
-  // w3: 気温14°C以下
-  autoSet('w3', minTemp <= 14 && minTemp < 90, `旅程中の最低気温 ${minTemp.toFixed(1)}°C（3地点）`);
+  // w3: 体感温度14°C以下（風冷えを考慮、データ無し時は気温で代用）
+  const effTemp = minApp < 90 ? minApp : minTemp;
+  autoSet('w3', effTemp <= 14 && effTemp < 90,
+    `旅程中の最低体感温度 ${effTemp.toFixed(1)}°C（気温 ${minTemp.toFixed(1)}°C・3地点）`);
 
   // w4: 帰路降水確率（出発+4h〜+6h、3地点）
   const retPops   = locData.flatMap((d, i) => retI[i].map(j => d.h.precipitation_probability[j] ?? 0));
@@ -950,8 +968,36 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
       `${locData[0].name}${takoTemp.toFixed(1)}°C vs ${dest.name}${destTemp.toFixed(1)}°C（差 ${Math.abs(diff).toFixed(1)}°C）`);
   }
 
-  // w6: 強風（7m/s以上）
-  autoSet('w6', maxWind >= 7, `旅程中の最大風速 ${maxWind.toFixed(1)} m/s（3地点）`);
+  // w6: 強風（平均7m/s以上 または 突風12m/s以上）
+  autoSet('w6', maxWind >= 7 || maxGust >= 12,
+    `旅程中の最大風速 ${maxWind.toFixed(1)} m/s／最大突風 ${maxGust.toFixed(1)} m/s（3地点）`);
+
+  // w7: 日没超過（コース最大所要時間で帰還見込みを算出し、出発地の日没と比較）
+  const destKey = document.getElementById('destination').value;
+  const courseTime = ALL_DESTS[destKey]?.course?.time || '';
+  const tm = courseTime.match(/([\d.]+)(?:〜([\d.]+))?時間/);
+  const sunsetStr = (locData[0].d?.time || []).indexOf(dateStr) >= 0
+    ? locData[0].d.sunset[locData[0].d.time.indexOf(dateStr)] : null;
+  if (tm && sunsetStr) {
+    const maxHours = parseFloat(tm[2] || tm[1]);
+    const arrival = depH + maxHours;
+    const sunsetH = parseInt(sunsetStr.slice(11,13),10) + parseInt(sunsetStr.slice(14,16),10)/60;
+    const arrH = Math.floor(arrival)%24, arrM = Math.round((arrival%1)*60);
+    autoSet('w7', arrival > sunsetH,
+      `帰還見込み ${String(arrH).padStart(2,'0')}:${String(arrM).padStart(2,'0')}頃 vs 日没 ${sunsetStr.slice(11,16)}（所要最大${maxHours}時間で計算）`);
+  } else {
+    autoSet('w7', false, '');
+  }
+
+  // 日の出・日没の表示
+  const sunEl = document.getElementById('sun-info');
+  if (sunEl && locData[0].d) {
+    const di = locData[0].d.time.indexOf(dateStr);
+    sunEl.textContent = di >= 0
+      ? `🌅 日の出 ${locData[0].d.sunrise[di].slice(11,16)}　🌇 日没 ${locData[0].d.sunset[di].slice(11,16)}（出発地・${dateStr}）`
+      : '';
+    sunEl.style.display = di >= 0 ? 'block' : 'none';
+  }
 
   updateEquipment();
 }
@@ -979,11 +1025,14 @@ function renderCards(locData, destInfo, dateStr, depH) {
     }
     const pops  = is.map(i => d.h.precipitation_probability[i] ?? 0);
     const winds = is.map(i => d.h.windspeed_10m[i] ?? 0);
+    const gusts = is.map(i => d.h.wind_gusts_10m?.[i] ?? 0);
     const temps = is.map(i => d.h.temperature_2m[i] ?? 0);
+    const apps  = is.map(i => d.h.apparent_temperature?.[i] ?? 99);
     const codes = is.map(i => d.h.weathercode[i] ?? 0);
 
-    const maxPop = Math.max(...pops), maxW = Math.max(...winds);
+    const maxPop = Math.max(...pops), maxW = Math.max(...winds), maxG = Math.max(...gusts);
     const minT = Math.min(...temps),  maxT = Math.max(...temps);
+    const minA = Math.min(...apps);
     const rain = codes.some(c => RAIN_CODES.has(c));
     const thdr = codes.some(c => THUNDER_CODES.has(c));
 
@@ -1008,8 +1057,14 @@ function renderCards(locData, destInfo, dateStr, depH) {
         <div class="wc-row">最大風速
           <span class="wc-val ${maxW>=7?'danger':maxW>=5?'warn':''}">${maxW.toFixed(1)} m/s</span>
         </div>
+        <div class="wc-row">最大突風
+          <span class="wc-val ${maxG>=12?'danger':maxG>=8?'warn':''}">${maxG.toFixed(1)} m/s</span>
+        </div>
         <div class="wc-row">気温
-          <span class="wc-val ${minT<=14?'warn':''}">${minT.toFixed(1)}〜${maxT.toFixed(1)}°C</span>
+          <span class="wc-val">${minT.toFixed(1)}〜${maxT.toFixed(1)}°C</span>
+        </div>
+        <div class="wc-row">体感温度（最低）
+          <span class="wc-val ${minA<=14?'warn':''}">${minA < 90 ? minA.toFixed(1) + '°C' : '—'}</span>
         </div>
         <div class="wc-badges">
           ${rain ? '<span class="badge-r">🌧 雨</span>' : ''}
@@ -1075,9 +1130,9 @@ function clearEquipment() {
 
 function evaluate() {
   const sc = ['c1','c2','c3','c4'].filter(id => document.getElementById(id)?.checked).length;
-  const wc = ['w1','w2','w3','w4','w5','w6'].filter(id => document.getElementById(id)?.checked).length;
+  const wc = ['w1','w2','w3','w4','w5','w6','w7'].filter(id => document.getElementById(id)?.checked).length;
   const box = document.getElementById('verdict');
-  document.getElementById('counter').textContent = `即中止: ${sc}/4  ／  注意: ${wc}/6`;
+  document.getElementById('counter').textContent = `即中止: ${sc}/4  ／  注意: ${wc}/7`;
   box.className = 'verdict-box';
   if      (sc >= 1)  { box.classList.add('verdict-cancel');  box.textContent = '🚫 中止 — 即中止ラインに該当'; }
   else if (wc >= 3)  { box.classList.add('verdict-cancel');  box.textContent = '🛑 中止推奨 — 注意項目が3つ以上'; }
