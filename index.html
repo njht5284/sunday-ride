@@ -786,9 +786,19 @@ async function fetchAll() {
       ]),
     ]);
     renderCards(locData, dest, dateStr, depH);
-    autoPopulate(locData, warnActive, dateStr, depH);
+    // 予報データが1地点も無い場合は判定せず明示（誤った「出発OK」を防ぐ）
+    const hasData = locData.some(d => getIdxRange(d.h.time, dateStr, depH, TRIP_H).length > 0);
+    if (!hasData) {
+      clearAuto();
+      const box = document.getElementById('verdict');
+      box.className = 'verdict-box verdict-default';
+      box.textContent = '⚠️ 選択日時の予報データがありません — 日付を確認してください';
+      document.getElementById('counter').textContent = '　';
+    } else {
+      autoPopulate(locData, warnActive, dateStr, depH);
+      evaluate();
+    }
     markAutoFetched(['tako', 'dest', 'jma']);
-    evaluate();
     updateHash(dateStr, timeStr, destKey);
   } catch (e) {
     document.getElementById('weather-cards').innerHTML =
@@ -807,7 +817,7 @@ async function fetchOpenMeteo(loc) {
   const p = new URLSearchParams({
     latitude: loc.lat, longitude: loc.lon,
     hourly: 'precipitation_probability,precipitation,temperature_2m,windspeed_10m,weathercode',
-    timezone: 'Asia/Tokyo', forecast_days: 3, past_days: 1,
+    timezone: 'Asia/Tokyo', forecast_days: 7, past_days: 1,
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${p}`);
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
@@ -832,11 +842,16 @@ async function fetchJMAWarnings(targets) {
   return results.some(Boolean);
 }
 
+// 雨・雷・洪水に関係する警報・注意報コードのみ対象（乾燥・霜などは除外）
+// 33:大雨特別警報 03:大雨警報 10:大雨注意報 04:洪水警報 18:洪水注意報 14:雷注意報
+const RAIN_WARN_CODES = new Set(['33', '03', '10', '04', '18', '14']);
+
 function checkWarning(data, areaName) {
   for (const at of data.areaTypes || []) {
     for (const area of at.areas || []) {
       if (!area.name.includes(areaName)) continue;
       for (const w of area.warnings || []) {
+        if (w.code && !RAIN_WARN_CODES.has(String(w.code))) continue;
         const s = (w.status || '').trim();
         if (s && s !== 'なし' && s !== '解除') return true;
       }

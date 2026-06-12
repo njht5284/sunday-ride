@@ -1,5 +1,5 @@
-// 北摂ライド天気チェッカー — Service Worker
-const CACHE_NAME = 'ride-check-v2';
+// ライド出発判断チェッカー — Service Worker
+const CACHE_NAME = 'ride-check-v3';
 const STATIC_FILES = [
   './',
   './index.html',
@@ -35,7 +35,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 静的ファイル（同一オリジン）のみキャッシュ優先（オフライン対応）
+  // ページ本体はネットワーク優先：常に最新版を表示し、
+  // オフライン時のみキャッシュにフォールバック（更新時の「リロード2回」を解消）
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // その他の静的ファイルはキャッシュ優先（オフライン対応）
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
