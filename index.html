@@ -336,6 +336,8 @@ body.has-verdict-bar { padding-top: 56px; }
 
   <p id="sun-info" style="display:none; margin-top:10px; font-size:0.8rem; font-weight:600; color:#4a5568; text-align:center; background:#fffaf0; border:1px solid #fbd38d; border-radius:8px; padding:7px"></p>
 
+  <div id="dep-weather" style="display:none; margin-top:10px"></div>
+
   <div class="route-chips" id="route-chips">
     <span class="chip chip-fixed" id="start-chip-1">📍 宝塚市 <small>出発・帰還固定</small></span>
     <span class="arr">→</span>
@@ -837,6 +839,7 @@ async function fetchAll() {
     ]);
     renderOverview(overview);
     renderCards(locData, dest, dateStr, depH);
+    renderDepWeather(locData, dateStr, depH, timeStr);
     // 予報データが1地点も無い場合は判定せず明示（誤った「出発OK」を防ぐ）
     const hasData = locData.some(d => getIdxRange(d.h.time, dateStr, depH, TRIP_H).length > 0);
     if (!hasData) {
@@ -1079,6 +1082,44 @@ function autoPopulate(locData, warnActive, dateStr, depH) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 出発時刻の天気（アイコン表示）
+// ──────────────────────────────────────────────────────────────────────────────
+function wmoIcon(c) {
+  if (c === 0) return ['☀️', '快晴'];
+  if (c === 1) return ['🌤️', '晴れ'];
+  if (c === 2) return ['⛅', '晴れ時々曇り'];
+  if (c === 3) return ['☁️', '曇り'];
+  if (c === 45 || c === 48) return ['🌫️', '霧'];
+  if (c >= 51 && c <= 57) return ['🌦️', '霧雨'];
+  if (c >= 61 && c <= 67) return ['🌧️', '雨'];
+  if (SNOW_CODES.has(c)) return ['🌨️', '雪'];
+  if (c >= 80 && c <= 82) return ['🌦️', 'にわか雨'];
+  if (c >= 95) return ['⛈️', '雷雨'];
+  return ['🌡️', '—'];
+}
+
+function renderDepWeather(locData, dateStr, depH, timeStr) {
+  const el = document.getElementById('dep-weather');
+  const roles = ['🏠 出発地', '🛣️ 中間点', '📍 目的地'];
+  const cells = locData.map((d, i) => {
+    const idx = getIdx(d.h.time, dateStr, depH);
+    if (idx < 0) return `<div style="flex:1; text-align:center; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 4px; font-size:0.74rem; color:#a0aec0">予報なし</div>`;
+    const [ic, lbl] = wmoIcon(d.h.weathercode[idx] ?? -1);
+    const t = d.h.temperature_2m[idx];
+    const p = d.h.precipitation_probability[idx] ?? 0;
+    return `<div style="flex:1; text-align:center; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 4px">
+      <div style="font-size:0.68rem; color:#a0aec0; font-weight:700">${roles[i]}</div>
+      <div style="font-size:2.1rem; line-height:1.25">${ic}</div>
+      <div style="font-size:0.74rem; font-weight:700; color:#2d3748">${lbl}</div>
+      <div style="font-size:0.8rem; color:#4a5568; margin-top:3px">🌡 ${t != null ? t.toFixed(1) : '—'}°C</div>
+      <div style="font-size:0.8rem; font-weight:700; color:${p >= 50 ? '#e53e3e' : p >= 30 ? '#d69e2e' : '#3182ce'}">☔ ${p}%</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<p class="links-row-label">🚴 出発時刻（${timeStr}）の天気</p><div style="display:flex; gap:7px">${cells}</div>`;
+  el.style.display = 'block';
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // 天気カード描画
 // ──────────────────────────────────────────────────────────────────────────────
 function renderCards(locData, destInfo, dateStr, depH) {
@@ -1271,6 +1312,7 @@ function resetAll() {
   document.getElementById('weather-section').style.display = 'none';
   document.getElementById('overview-section').style.display = 'none';
   document.getElementById('sun-info').style.display = 'none';
+  document.getElementById('dep-weather').style.display = 'none';
   document.getElementById('verdict-bar').style.display = 'none';
   document.body.classList.remove('has-verdict-bar');
   history.replaceState(null, '', location.pathname);
