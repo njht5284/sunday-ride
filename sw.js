@@ -1,5 +1,5 @@
 // ライド出発判断チェッカー — Service Worker
-const CACHE_NAME = 'ride-check-v3';
+const CACHE_NAME = 'ride-check-v4';
 const STATIC_FILES = [
   './',
   './index.html',
@@ -39,7 +39,8 @@ self.addEventListener('fetch', event => {
   // オフライン時のみキャッシュにフォールバック（更新時の「リロード2回」を解消）
   if (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
     event.respondWith(
-      fetch(event.request)
+      // HTTPキャッシュをバイパスして常にサーバーから最新を取得（cache:'reload'）
+      fetch(new Request(event.request.url, { cache: 'reload' }))
         .then(res => {
           const copy = res.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
