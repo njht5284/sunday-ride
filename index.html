@@ -132,6 +132,7 @@ h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
 .verdict-go     { background: #c6f6d5; color: #22543d; border: 2px solid #48bb78; }
 .verdict-cancel { background: #fed7d7; color: #742a2a; border: 2px solid #fc8181; }
 .verdict-caution{ background: #fefcbf; color: #744210; border: 2px solid #f6e05e; }
+.verdict-warn   { background: #feebc8; color: #7b341e; border: 2px solid #f6ad55; }
 .verdict-default{ background: #e2e8f0; color: #4a5568; border: 2px solid #cbd5e0; }
 /* 取得後に画面上部へ常時固定表示するミニ判定バー（スマホ対応） */
 #verdict-bar {
@@ -1303,8 +1304,9 @@ function evaluate() {
   document.getElementById('counter').textContent = `即中止: ${sc}/6  ／  注意: ${wc}/7`;
   box.className = 'verdict-box';
   if      (sc >= 1)  { box.classList.add('verdict-cancel');  box.textContent = '🚫 中止 — 即中止ラインに該当'; }
-  else if (wc >= 3)  { box.classList.add('verdict-cancel');  box.textContent = '🛑 中止推奨 — 注意項目が3つ以上'; }
-  else if (wc >= 1)  { box.classList.add('verdict-caution'); box.textContent = '⚠️ 要注意 — 出発可能だが装備・エスケープを再確認'; }
+  else if (wc >= 5)  { box.classList.add('verdict-cancel');  box.textContent = '🛑 中止推奨 — 注意項目が5つ以上'; }
+  else if (wc >= 3)  { box.classList.add('verdict-warn');    box.textContent = '🟠 要注意 — 装備・エスケープ必須、コース短縮も検討'; }
+  else if (wc >= 1)  { box.classList.add('verdict-caution'); box.textContent = '🟡 軽度注意 — 装備を確認すれば出発可'; }
   else               { box.classList.add('verdict-go');      box.textContent = '✅ 出発OK — 全条件クリア！'; }
   // 画面上部の固定ミニバーにも同じ判定を表示（スクロールしても常に見える）
   const bar = document.getElementById('verdict-bar');
