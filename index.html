@@ -421,6 +421,13 @@ body.has-verdict-bar { padding-top: 56px; }
   <p class="data-src">データ: Open-Meteo (hourly) ＋ JMA警報API</p>
 </div>
 
+<!-- ④-2 季節の注意点（注意喚起のみ・判定カウントには非加算） -->
+<div class="section" id="season-section" style="display:none">
+  <h2 id="season-title">🍃 今の季節の注意点</h2>
+  <p style="font-size:0.74rem; color:#a0aec0; margin:-4px 0 8px">※装備・走り方の注意喚起です。中止/注意の判定カウントには加算されません。</p>
+  <div id="season-list"></div>
+</div>
+
 <!-- ⑤ 即中止ライン -->
 <div class="section">
   <h2>🚫 即中止ライン <span class="h2-sub">— 1項目でも該当 → 中止</span></h2>
@@ -850,6 +857,7 @@ async function fetchAll() {
       document.getElementById('counter').textContent = '　';
     } else {
       autoPopulate(locData, warnActive, dateStr, depH);
+      renderSeasonal(locData, dateStr, depH);
       evaluate();
     }
     markAutoFetched(['tako', 'dest', 'jma']);
@@ -870,8 +878,8 @@ async function fetchAll() {
 async function fetchOpenMeteo(loc) {
   const p = new URLSearchParams({
     latitude: loc.lat, longitude: loc.lon,
-    hourly: 'precipitation_probability,precipitation,temperature_2m,apparent_temperature,windspeed_10m,wind_gusts_10m,weathercode,snowfall,snow_depth',
-    daily: 'sunrise,sunset',
+    hourly: 'precipitation_probability,precipitation,temperature_2m,apparent_temperature,relative_humidity_2m,uv_index,cape,windspeed_10m,wind_gusts_10m,weathercode,snowfall,snow_depth',
+    daily: 'sunrise,sunset,uv_index_max,temperature_2m_max,temperature_2m_min',
     timezone: 'Asia/Tokyo', forecast_days: 6, past_days: 1,
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${p}`);
@@ -1133,6 +1141,126 @@ function renderDepWeather(locData, dateStr, depH, timeStr) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 季節の注意点（注意喚起のみ・判定カウントには非加算）
+//   季節は出発日の「月」で判定（A案）。ただし熱中症・底冷えなど気温依存の項目は
+//   実気温のしきい値超えでも表示する（A＋C折衷）。
+// ──────────────────────────────────────────────────────────────────────────────
+// WBGT（暑さ指数）屋外簡易近似式： 0.735*T + 0.0374*RH + 0.00292*T*RH − 4.0
+function wbgtApprox(t, rh) { return 0.735 * t + 0.0374 * rh + 0.00292 * t * rh - 4.0; }
+
+function renderSeasonal(locData, dateStr, depH) {
+  const sec  = document.getElementById('season-section');
+  const list = document.getElementById('season-list');
+  const month = parseInt(dateStr.slice(5, 7), 10);
+  const season = [12,1,2].includes(month) ? 'winter'
+               : [3,4,5].includes(month)  ? 'spring'
+               : [6,7,8].includes(month)  ? 'summer' : 'autumn';
+  const seasonMeta = {
+    spring: ['🌸 春の注意点', '#fef3f8', '#fbb6ce'],
+    summer: ['☀️ 夏の注意点', '#fffaf0', '#fbd38d'],
+    autumn: ['🍂 秋の注意点', '#fffaf0', '#f6ad55'],
+    winter: ['❄️ 冬の注意点', '#ebf8ff', '#90cdf4'],
+  }[season];
+
+  // 旅程中インデックス（3地点）と各種集計
+  const tripI = locData.map(d => getIdxRange(d.h.time, dateStr, depH, TRIP_H));
+  const collect = (key, agg, init) => agg(init, ...locData.flatMap((d, i) =>
+    tripI[i].map(j => d.h[key]?.[j]).filter(v => v != null)));
+  const maxTemp = collect('temperature_2m', Math.max, -99);
+  const maxApp  = collect('apparent_temperature', Math.max, -99);
+
+  // WBGT最大（旅程中・3地点）
+  let maxWbgt = -99;
+  locData.forEach((d, i) => tripI[i].forEach(j => {
+    const t = d.h.temperature_2m?.[j], rh = d.h.relative_humidity_2m?.[j];
+    if (t != null && rh != null) maxWbgt = Math.max(maxWbgt, wbgtApprox(t, rh));
+  }));
+
+  // CAPE最大・午後（12〜17時）の最大降水確率
+  const maxCape = collect('cape', Math.max, 0);
+  const aftI = locData.map(d => getIdxRange(d.h.time, dateStr, 12, 6));
+  const aftPop = Math.max(0, ...locData.flatMap((d, i) =>
+    aftI[i].map(j => d.h.precipitation_probability?.[j] ?? 0)));
+
+  // 出発地・出発時刻の値
+  const dep0 = getIdx(locData[0].h.time, dateStr, depH);
+  const depTemp = dep0 >= 0 ? locData[0].h.temperature_2m[dep0] : null;
+  const depApp  = dep0 >= 0 ? locData[0].h.apparent_temperature[dep0] : null;
+
+  // 当日の日別 最高/最低気温・UV最大（出発地）
+  const di = (locData[0].d?.time || []).indexOf(dateStr);
+  const dMax = di >= 0 ? locData[0].d.temperature_2m_max?.[di] : null;
+  const dMin = di >= 0 ? locData[0].d.temperature_2m_min?.[di] : null;
+  const uvMax = di >= 0 ? locData[0].d.uv_index_max?.[di] : null;
+  const earlyStart = depH <= 8;
+
+  // 各項目： applicable = この季節 or 気温連動で表示するか
+  const items = [
+    { key:'heat', icon:'🥵', label:'熱中症リスク（暑さ指数）',
+      applicable: season === 'summer' || maxTemp >= 31,
+      hit: maxWbgt >= 28 || maxTemp >= 31,
+      detail: `旅程中の暑さ指数 約${maxWbgt > -99 ? maxWbgt.toFixed(0) : '—'}（最高気温 ${maxTemp > -99 ? maxTemp.toFixed(0) : '—'}°C）`,
+      advice: 'こまめな給水・塩分補給、早朝発・日中の無理を避ける' },
+    { key:'uv', icon:'☀️', label:'紫外線が非常に強い',
+      applicable: season === 'summer',
+      hit: uvMax != null && uvMax >= 8,
+      detail: `当日のUV指数最大 ${uvMax != null ? uvMax.toFixed(0) : '—'}`,
+      advice: '日焼け止め・アームカバー・サングラスで紫外線対策' },
+    { key:'tropic', icon:'🌡️', label:'夜間も高温（早朝発推奨）',
+      applicable: season === 'summer',
+      hit: depTemp != null && depTemp >= 28,
+      detail: `出発時刻の気温 ${depTemp != null ? depTemp.toFixed(1) : '—'}°C`,
+      advice: '日中の酷暑を避けるため、より早い時間帯の出発を検討' },
+    { key:'guerrilla', icon:'⛈️', label:'ゲリラ豪雨・雷雨化のリスク',
+      applicable: season === 'summer',
+      hit: maxCape >= 1000 && aftPop >= 30,
+      detail: `大気不安定度CAPE 最大${maxCape.toFixed(0)} J/kg・午後の降水確率 ${aftPop}%`,
+      advice: '午後は天候急変に注意。早めの帰還・雨宿り場所の把握を' },
+    { key:'chill', icon:'🌗', label:'朝晩の冷え込み',
+      applicable: (season === 'spring' || season === 'autumn') && earlyStart,
+      hit: dMin != null && dMin <= 5,
+      detail: `当日の最低気温 ${dMin != null ? dMin.toFixed(1) : '—'}°C（早朝発）`,
+      advice: '出発時は冷える。脱ぎ着しやすい防寒レイヤーを携行' },
+    { key:'gap', icon:'🌡️', label:'一日の寒暖差が大きい',
+      applicable: season === 'spring' || season === 'autumn',
+      hit: dMax != null && dMin != null && (dMax - dMin) >= 15,
+      detail: `当日の最高 ${dMax != null ? dMax.toFixed(0) : '—'}°C / 最低 ${dMin != null ? dMin.toFixed(0) : '—'}°C（差 ${dMax != null && dMin != null ? (dMax - dMin).toFixed(0) : '—'}°C）`,
+      advice: '日中と朝晩で体感が大きく変わる。重ね着で調整を' },
+    { key:'radcool', icon:'🥶', label:'放射冷却による早朝の底冷え',
+      applicable: (season === 'winter' || (depApp != null && depApp <= 0)) && earlyStart,
+      hit: depApp != null && depApp <= 0,
+      detail: `出発時刻の体感温度 ${depApp != null ? depApp.toFixed(1) : '—'}°C（早朝発）`,
+      advice: '指先・足先の防寒を厚めに。路面凍結にも注意' },
+  ].filter(it => it.applicable);
+
+  if (!items.length) { sec.style.display = 'none'; return; }
+
+  document.getElementById('season-title').textContent = seasonMeta[0];
+  const hitCount = items.filter(it => it.hit).length;
+  list.innerHTML = items.map(it => {
+    const on = it.hit;
+    return `<div style="display:flex; gap:9px; align-items:flex-start; padding:9px 11px; margin-bottom:7px; border-radius:10px;
+        background:${on ? seasonMeta[1] : '#f7fafc'}; border:1px solid ${on ? seasonMeta[2] : '#e2e8f0'}">
+      <span style="font-size:1.3rem; line-height:1.3">${it.icon}</span>
+      <div style="flex:1">
+        <div style="font-size:0.86rem; font-weight:700; color:#2d3748">
+          ${it.label}
+          <span style="font-size:0.7rem; font-weight:700; margin-left:5px; padding:1px 7px; border-radius:8px;
+            color:${on ? '#c05621' : '#718096'}; background:${on ? '#fff' : '#edf2f7'}">${on ? '⚠️ 該当' : '✅ 問題なし'}</span>
+        </div>
+        <div style="font-size:0.74rem; color:#718096; margin-top:2px">${it.detail}</div>
+        ${on ? `<div style="font-size:0.76rem; color:#4a5568; margin-top:3px">💡 ${it.advice}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  if (hitCount > 0) {
+    list.insertAdjacentHTML('afterbegin',
+      `<p style="font-size:0.8rem; font-weight:700; color:#c05621; margin:0 0 8px">この季節の注意 ⚠️ ${hitCount}件 該当</p>`);
+  }
+  sec.style.display = 'block';
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // 天気カード描画
 // ──────────────────────────────────────────────────────────────────────────────
 function renderCards(locData, destInfo, dateStr, depH) {
@@ -1324,6 +1452,7 @@ function resetAll() {
   document.getElementById('links-counter').textContent = '目視確認: 0/3　自動取得: 0/3';
   document.getElementById('weather-section').style.display = 'none';
   document.getElementById('overview-section').style.display = 'none';
+  document.getElementById('season-section').style.display = 'none';
   document.getElementById('sun-info').style.display = 'none';
   document.getElementById('dep-weather').style.display = 'none';
   document.getElementById('verdict-bar').style.display = 'none';
