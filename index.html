@@ -414,12 +414,6 @@ body.has-verdict-bar { padding-top: 56px; }
   <p id="overview-text" style="font-size:0.82rem; line-height:1.8; color:#4a5568; white-space:pre-wrap"></p>
 </div>
 
-<!-- ④ 天気カード -->
-<div class="section" id="weather-section" style="display:none">
-  <h2>🌡️ ルート上の天気予報 <span class="h2-sub" id="weather-label"></span></h2>
-  <div class="weather-grid" id="weather-cards"></div>
-  <p class="data-src">データ: Open-Meteo (hourly) ＋ JMA警報API</p>
-</div>
 
 <!-- ④-2 季節の注意点（注意喚起のみ・判定カウントには非加算） -->
 <div class="section" id="season-section" style="display:none">
@@ -828,12 +822,6 @@ async function fetchAll() {
     lon:   (start.lon + dest.lon) / 2,
   };
 
-  document.getElementById('weather-section').style.display = 'block';
-  document.getElementById('weather-label').textContent =
-    `— ${dateStr} ${timeStr}発 → ${dest.name}`;
-  document.getElementById('weather-cards').innerHTML =
-    '<p class="fetch-status" style="grid-column:1/-1">Open-Meteo ＋ JMA から取得中（3地点）…</p>';
-
   try {
     const locations = [start, mid, dest];
     const [locData, warnActive, overview] = await Promise.all([
@@ -845,7 +833,6 @@ async function fetchAll() {
       fetchOverview(dest.warnPref),
     ]);
     renderOverview(overview);
-    renderCards(locData, dest, dateStr, depH);
     renderDepWeather(locData, dateStr, depH, timeStr);
     // 予報データが1地点も無い場合は判定せず明示（誤った「出発OK」を防ぐ）
     const hasData = locData.some(d => getIdxRange(d.h.time, dateStr, depH, TRIP_H).length > 0);
@@ -863,10 +850,12 @@ async function fetchAll() {
     markAutoFetched(['tako', 'dest', 'jma']);
     updateHash(dateStr, timeStr, destKey);
   } catch (e) {
-    document.getElementById('weather-cards').innerHTML =
-      `<p class="fetch-error" style="grid-column:1/-1">⚠️ 取得エラー: ${e.message}<br>
+    const ew = document.getElementById('dep-weather');
+    ew.innerHTML =
+      `<p class="fetch-error">⚠️ 取得エラー: ${e.message}<br>
       ローカル（file://）環境ではCORSポリシーにより取得できない場合があります。
       上の天気確認リンクで手動確認してください。</p>`;
+    ew.style.display = 'block';
   } finally {
     btn.disabled = false; btn.textContent = '🌐 天気を自動取得';
   }
@@ -1256,82 +1245,6 @@ function renderSeasonal(locData, dateStr, depH) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 天気カード描画
-// ──────────────────────────────────────────────────────────────────────────────
-function renderCards(locData, destInfo, dateStr, depH) {
-  const container = document.getElementById('weather-cards');
-  container.innerHTML = '';
-
-  // 0=宝塚, 1=中間点, 2=目的地
-  const ROLES = [
-    { cls: '',         label: '出発・帰還', labelColor: '#553c9a' },
-    { cls: ' wc-mid',  label: '中間点',     labelColor: '#c05621' },
-    { cls: ' wc-dest', label: '目的地',     labelColor: '#38a169' },
-  ];
-
-  locData.forEach((d, idx) => {
-    const role = ROLES[idx] || ROLES[0];
-    const is = getIdxRange(d.h.time, dateStr, depH, TRIP_H);
-    if (!is.length) {
-      container.innerHTML += `<div class="wc${role.cls}"><div class="wc-title">${d.emoji||'📍'} ${d.name}</div><div>予報期間外</div></div>`;
-      return;
-    }
-    const pops  = is.map(i => d.h.precipitation_probability[i] ?? 0);
-    const winds = is.map(i => d.h.windspeed_10m[i] ?? 0);
-    const gusts = is.map(i => d.h.wind_gusts_10m?.[i] ?? 0);
-    const temps = is.map(i => d.h.temperature_2m[i] ?? 0);
-    const apps  = is.map(i => d.h.apparent_temperature?.[i] ?? 99);
-    const codes = is.map(i => d.h.weathercode[i] ?? 0);
-
-    const maxPop = Math.max(...pops), maxW = Math.max(...winds), maxG = Math.max(...gusts);
-    const minT = Math.min(...temps),  maxT = Math.max(...temps);
-    const minA = Math.min(...apps);
-    const snow = codes.some(c => SNOW_CODES.has(c));
-    const rain = codes.some(c => RAIN_CODES.has(c) && !SNOW_CODES.has(c));
-    const thdr = codes.some(c => THUNDER_CODES.has(c));
-
-    // 熱中症リスク
-    const heatBadge = maxT >= 33 ? '<span class="badge-heat severe">🔴 熱中症厳重警戒</span>'
-                    : maxT >= 28 ? '<span class="badge-heat">🟠 熱中症警戒</span>'
-                    : maxT >= 25 ? '<span class="badge-heat">🟡 熱中症注意</span>'
-                    : '';
-    // 低体温リスク
-    const coldBadge = minT <= 10 ? '<span class="badge-cold severe">🔵 低体温リスク高</span>'
-                    : minT <= 14 ? '<span class="badge-cold">🔵 低体温注意</span>'
-                    : '';
-
-    container.innerHTML += `
-      <div class="wc${role.cls}">
-        <div class="wc-title">${d.emoji||'📍'} ${d.name}
-          <small style="font-weight:400;color:${role.labelColor}">${role.label}</small>
-        </div>
-        <div class="wc-row">降水確率（最大）
-          <span class="wc-val ${maxPop>=50?'danger':maxPop>=30?'warn':''}">${maxPop}%</span>
-        </div>
-        <div class="wc-row">最大風速
-          <span class="wc-val ${maxW>=7?'danger':maxW>=5?'warn':''}">${maxW.toFixed(1)} m/s</span>
-        </div>
-        <div class="wc-row">最大突風
-          <span class="wc-val ${maxG>=12?'danger':maxG>=8?'warn':''}">${maxG.toFixed(1)} m/s</span>
-        </div>
-        <div class="wc-row">気温
-          <span class="wc-val">${minT.toFixed(1)}〜${maxT.toFixed(1)}°C</span>
-        </div>
-        <div class="wc-row">体感温度（最低）
-          <span class="wc-val ${minA<=14?'warn':''}">${minA < 90 ? minA.toFixed(1) + '°C' : '—'}</span>
-        </div>
-        <div class="wc-badges">
-          ${rain ? '<span class="badge-r">🌧 雨</span>' : ''}
-          ${snow ? '<span class="badge-cold">❄️ 雪</span>' : ''}
-          ${thdr ? '<span class="badge-t">⚡ 雷</span>' : ''}
-          ${heatBadge}
-          ${coldBadge}
-        </div>
-      </div>`;
-  });
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
 // UI ヘルパー
 // ──────────────────────────────────────────────────────────────────────────────
 function autoSet(id, cond, reason) {
@@ -1445,7 +1358,6 @@ function resetAll() {
   box.textContent = '出発日時・目的地を選択して天気を自動取得してください';
   document.getElementById('counter').textContent = '　';
   document.getElementById('links-counter').textContent = '目視確認: 0/3　自動取得: 0/3';
-  document.getElementById('weather-section').style.display = 'none';
   document.getElementById('overview-section').style.display = 'none';
   document.getElementById('season-section').style.display = 'none';
   document.getElementById('sun-info').style.display = 'none';
